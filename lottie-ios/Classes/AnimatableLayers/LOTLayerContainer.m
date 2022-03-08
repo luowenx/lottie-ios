@@ -144,9 +144,24 @@
     UIImage *image;
     if ([asset.imageName hasPrefix:@"data:"]) {
       // Contents look like a data: URL. Ignore asset.imageDirectory and simply load the image directly.
-      NSURL *imageUrl = [NSURL URLWithString:asset.imageName];
-      NSData *imageData = [NSData dataWithContentsOfURL:imageUrl];
-      image = [UIImage imageWithData:imageData];
+        // https://github.com/airbnb/lottie-ios/issues/1256
+        NSRegularExpression *expression = [NSRegularExpression regularExpressionWithPattern:@"data:image\\/([a-zA-Z]*);base64,([^\\\"]*)"
+                                                                                 options:0
+                                                                                   error:NULL];
+        NSString *imageName = asset.imageName;
+        NSArray *results = [expression matchesInString:imageName options:0 range:NSMakeRange(0, imageName.length)];
+        if (results.count > 0) {
+            NSRange range = [imageName rangeOfString:@"base64,"];
+            NSString *base64String = [imageName substringFromIndex:range.location + range.length];
+            NSData *base64Data = [[NSData alloc] initWithBase64EncodedString:base64String options:(NSDataBase64DecodingIgnoreUnknownCharacters)];
+            image = [UIImage imageWithData:base64Data];
+        } else {
+            NSURL *imageUrl = [NSURL URLWithString:asset.imageName];
+            NSData *imageData = [NSData dataWithContentsOfURL:imageUrl];
+            image = [UIImage imageWithData:imageData];
+        }
+        
+        
     } else if (asset.rootDirectory.length > 0) {
       NSString *rootDirectory  = asset.rootDirectory;
       if (asset.imageDirectory.length > 0) {
